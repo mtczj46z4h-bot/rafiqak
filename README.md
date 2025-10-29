@@ -1,1 +1,1 @@
-https://اسم_المستخدم.github.io/rafiqak/
+https://رفيقك.github.io/rafiqak/
