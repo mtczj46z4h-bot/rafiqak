@@ -1,0 +1,303 @@
+/* ----------------------------
+  rafiqak — interactive app JS
+  انسخ هذا الكود داخل <script> في أسفل index.html
+---------------------------- */
+
+(() => {
+  // ====== بيانات التطبيق (قابل للتعديل بسهولة) ======
+  const moods = [
+    { id: 'joy', emoji: '😊', label: 'سعيد / مرتاح' },
+    { id: 'calm', emoji: '😌', label: 'هادئ' },
+    { id: 'sad', emoji: '🙁', label: 'حزين قليلاً' },
+    { id: 'stressed', emoji: '😣', label: 'متوتر' },
+    { id: 'over', emoji: '😫', label: 'مرهق / مثقل' }
+  ];
+
+  const motivational = {
+    joy: [
+      "جميل أن تشعر بهذا! حافظ على ما يمنحك السعادة ❤️",
+      "انشر هذه الطاقة الجميلة حولك — أنت تستحق الراحة.",
+      "التقدير لنفسك مهم، خذ لحظة لشكر نفسك اليوم."
+    ],
+    calm: [
+      "هدوءك قوة — استمر في نفس الوتيرة 😊",
+      "تنفس بعمق إذا احتجت لدقيقة من الصفاء الذهني.",
+      "جيد أنك تشعر بالاستقرار؛ حافظ على روتين يساندك."
+    ],
+    sad: [
+      "هذا الشعور مؤقت، ومن الجيد أنك لاحظت حالتك — هذه خطوة مهمة.",
+      "أنت لست وحدك؛ خذ لحظة للعناية بنفسك اليوم.",
+      "اسمح لنفسك بالشعور، ثم حاول فعل شيء بسيط يُسعدك."
+    ],
+    stressed: [
+      "تنفّس 4-4-4: شهيق 4 ثواني — حبس 4 — زفير 4. كرر 3 مرات.",
+      "قسّم مهامك لمهام صغيرة جدًا — إنجاز صغير يخفف الضغط.",
+      "البداية بخطوة بسيطة أفضل من الانتظار حتى تزول الضغوط."
+    ],
+    over: [
+      "هذا عبء حقيقي. جرّب أن تكتب ثلاث أشياء صغيرة تستطيع فعلها الآن.",
+      "استعن بشخص موثوق وشاركه ما تحس به — المناقشة تريح.",
+      "إذا استمر الشعور، يُستحسن التواصل مع مختص صحي."
+    ]
+  };
+
+  const exercisesPool = {
+    joy: [
+      {title:"مشاركة امتنان",desc:"اكتب 3 أمور أنت ممتنّ لها اليوم (3 دقائق)"},
+      {title:"مشي قصير",desc:"تمشى 10 دقائق في الهواء الطلق"},
+      {title:"تمرين تنفّس",desc:"تنفّس 4-6-8 لمدة 3 دقائق"}
+    ],
+    calm: [
+      {title:"تأمل قصير",desc:"جلسة تأمل 5 دقائق مع تركيز على التنفّس"},
+      {title:"كتابة إيجابية",desc:"دوّن إنجاز صغير حدث اليوم"},
+      {title:"تمدد",desc:"سلسلة تمارين تمدد 7 دقائق"}
+    ],
+    sad: [
+      {title:"مكالمة صديق",desc:"اتصل بأحد تثق به لمدة 10 دقائق"},
+      {title:"كتابة المشاعر",desc:"دوّن ما تشعر به دون حكم (5-10 دقائق)"},
+      {title:"استمتع بموسيقى",desc:"استمع لأغنية تريحك أو تحبها"}
+    ],
+    stressed: [
+      {title:"تمارين تنفّس",desc:"4-4-4 التنفّس لمدّة 5 دقائق"},
+      {title:"قائمة مهام صغيرة",desc:"قسّم مهمّة كبيرة إلى 3 مهام صغيرة"},
+      {title:"تمارين استرخاء",desc:"تمارين شد/استرخاء العضلات 8 دقائق"}
+    ],
+    over: [
+      {title:"اطلب مساعدة",desc:"حدد خطوة واحدة لطلب دعم (مثلاً: مراسلة مسؤول)"},
+      {title:"استراحة رقمية",desc:"ابتعد عن الشاشات 20 دقيقة"},
+      {title:"ممارسة خفيفة",desc:"مشي بطيء أو تمارين تنفّس لمدة 8 دقائق"}
+    ]
+  };
+
+  // ====== إعدادات التخزين المحلي ======
+  const APP_KEY = 'rafiqak_app_v1';
+  function getToday() {
+    const d = new Date();
+    return d.toISOString().split('T')[0];
+  }
+  function loadState(){
+    try {
+      const raw = localStorage.getItem(APP_KEY);
+      return raw ? JSON.parse(raw) : {
+        mood: null,
+        lastDate: null,
+        todaysExercises: [],
+        completedDates: [],
+        streak: 0
+      };
+    } catch (e) {
+      console.error('loadState error', e);
+      return { mood:null, lastDate:null, todaysExercises:[], completedDates:[], streak:0 };
+    }
+  }
+  function saveState(s){ localStorage.setItem(APP_KEY, JSON.stringify(s)); }
+
+  // ====== عناصر DOM (يتحقق من وجودها لتجنّب الأخطاء) ======
+  const $$ = id => document.getElementById(id);
+  const moodGrid = $$('moodGrid');
+  const startBtn = $$('startBtn');
+  const supportCard = $$('supportCard');
+  const moodCard = $$('moodCard');
+  const greeting = $$('greeting');
+  const motivationalMessage = $$('motivationalMessage');
+  const nextMsgBtn = $$('nextMsgBtn');
+  const dailyPlanBtn = $$('dailyPlanBtn');
+  const exList = $$('exList');
+  const exercisesSection = $$('exercisesSection');
+  const resetBtn = $$('resetBtn');
+  const notifyBtn = $$('notifyBtn');
+  const progressCard = $$('progressCard');
+  const streakDisplay = $$('streakDisplay');
+  const completeAllBtn = $$('completeAllBtn');
+  const exportBtn = $$('exportBtn');
+
+  if (!moodGrid || !startBtn) {
+    console.warn('بعض عناصر الواجهة غير موجودة (مثل moodGrid أو startBtn). تأكد من وجود العناصر بالـ id الصحيحة.');
+  }
+
+  let state = loadState();
+  let selectedMood = state.mood || null;
+
+  // ====== بناء شبكة المزاج (إيموجي) ======
+  function buildMoodGrid(){
+    if(!moodGrid) return;
+    moodGrid.innerHTML = '';
+    moods.forEach(m => {
+      const el = document.createElement('div');
+      el.className = 'mood' + (selectedMood===m.id? ' selected':'');
+      el.innerHTML = `<div class="emoji">${m.emoji}</div><div class="label">${m.label}</div>`;
+      el.addEventListener('click', () => {
+        selectedMood = m.id;
+        document.querySelectorAll('.mood').forEach(x=>x.classList.remove('selected'));
+        el.classList.add('selected');
+      });
+      moodGrid.appendChild(el);
+    });
+  }
+
+  // ====== اختيار رسالة تحفيزية عشوائية ======
+  function pickMotivational(mood) {
+    const arr = motivational[mood] || ["أنت بخير — خطوة صغيرة الآن قد تفرق لاحقًا."];
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
+
+  // ====== عرض الدعم بعد اختيار المزاج ======
+  function showSupportFor(mood){
+    if(!mood) return;
+    state.mood = mood;
+    saveState(state);
+    const moodObj = moods.find(mm => mm.id === mood);
+    if (greeting) greeting.innerText = `أنت اخترت: ${moodObj.emoji}  —  ${moodObj.label}`;
+    if (motivationalMessage) motivationalMessage.innerText = pickMotivational(mood);
+    if (moodCard) moodCard.style.display = 'none';
+    if (supportCard) supportCard.style.display = 'block';
+    if (progressCard) progressCard.style.display = 'block';
+    updateStreakUI();
+  }
+
+  // زر "ابدأ"
+  if (startBtn) {
+    startBtn.addEventListener('click', () => {
+      if (!selectedMood) { alert('اختر إحساسًا أولاً حتى أستطيع مساعدتك 😊'); return; }
+      showSupportFor(selectedMood);
+    });
+  }
+
+  // زر "عبارة أخرى"
+  if (nextMsgBtn) {
+    nextMsgBtn.addEventListener('click', () => {
+      if (!state.mood) { alert('اختر إحساسًا أولاً'); return; }
+      if (motivationalMessage) motivationalMessage.innerText = pickMotivational(state.mood);
+    });
+  }
+
+  // زر إعادة التصنيف
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      if (!confirm('هل تريد إعادة اختيار الحالة؟')) return;
+      state.mood = null;
+      saveState(state);
+      selectedMood = null;
+      buildMoodGrid();
+      if (moodCard) moodCard.style.display = 'block';
+      if (supportCard) supportCard.style.display = 'none';
+    });
+  }
+
+  // ====== خطة التمارين اليومية ======
+  function generateTodayPlan(mood){
+    const pool = exercisesPool[mood] || [];
+    // نختار بشكل عشوائي 2-3 تمارين
+    const shuffled = pool.slice().sort(()=>Math.random()-0.5);
+    return shuffled.slice(0, Math.min(3, shuffled.length));
+  }
+
+  function showTodayPlan(){
+    if(!state.mood){ alert('اختر إحساسًا أولاً'); return; }
+    const today = getToday();
+    if (state.lastDate !== today || !state.todaysExercises || state.todaysExercises.length === 0) {
+      const plan = generateTodayPlan(state.mood || 'calm');
+      state.todaysExercises = plan.map((e, idx) => ({ ...e, done: false, id: idx }));
+      state.lastDate = today;
+      saveState(state);
+    }
+    renderExercises();
+    if (exercisesSection) exercisesSection.style.display = 'block';
+  }
+
+  if (dailyPlanBtn) dailyPlanBtn.addEventListener('click', showTodayPlan);
+
+  function renderExercises(){
+    if(!exList) return;
+    exList.innerHTML = '';
+    if (!state.todaysExercises || state.todaysExercises.length === 0) {
+      exList.innerHTML = `<div class="small">لا توجد تمارين لليوم. اضغط "خطة اليوم" لتوليد تمارين.</div>`;
+      return;
+    }
+    state.todaysExercises.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'ex-item';
+      div.innerHTML = `
+        <div>
+          <div class="title">${item.title}</div>
+          <div class="small">${item.desc}</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn ghost" data-id="${item.id}">${item.done ? '✅ تم' : 'ابدأ'}</button>
+        </div>
+      `;
+      exList.appendChild(div);
+    });
+
+    // أحداث أزرار كل تمرين
+    exList.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = Number(btn.getAttribute('data-id'));
+        state.todaysExercises = state.todaysExercises.map(e => e.id === id ? { ...e, done: !e.done } : e);
+        saveState(state);
+        renderExercises();
+        // إذا أنجزت كل التمارين، وسجلنا اليوم كمكتمل
+        markCompletionIfAllDone();
+      });
+    });
+  }
+
+  function markCompletionIfAllDone(){
+    if (!state.todaysExercises || state.todaysExercises.length === 0) return;
+    const allDone = state.todaysExercises.every(e => e.done);
+    if (allDone) {
+      const today = getToday();
+      if (!state.completedDates.includes(today)) {
+        state.completedDates.push(today);
+        state.streak = computeStreak(state.completedDates);
+        saveState(state);
+        updateStreakUI();
+      }
+    }
+  }
+
+  if (completeAllBtn) {
+    completeAllBtn.addEventListener('click', () => {
+      if (!state.todaysExercises) return;
+      state.todaysExercises = state.todaysExercises.map(e => ({ ...e, done: true }));
+      const today = getToday();
+      if (!state.completedDates.includes(today)) state.completedDates.push(today);
+      state.streak = computeStreak(state.completedDates);
+      saveState(state);
+      renderExercises();
+      updateStreakUI();
+      alert('رائع — تم وضع علامة إنجاز لليوم 🎉');
+    });
+  }
+
+  function computeStreak(dates){
+    // حساب الأيام المتتالية حتى اليوم
+    const set = new Set(dates);
+    let count = 0;
+    let cur = new Date();
+    while (true) {
+      const s = cur.toISOString().split('T')[0];
+      if (set.has(s)) { count++; cur.setDate(cur.getDate() - 1); } else break;
+    }
+    return count;
+  }
+
+  function updateStreakUI(){
+    if (!streakDisplay) return;
+    streakDisplay.innerText = (state.streak || 0) + ((state.streak === 1) ? " يوم" : " أيام");
+  }
+
+  // ====== إشعارات المتصفح (تنبيه بسيط) ======
+  if (notifyBtn) {
+    notifyBtn.addEventListener('click', async () => {
+      if (!('Notification' in window)) { alert('المتصفح لا يدعم الإشعارات.'); return; }
+      const perm = await Notification.requestPermission();
+      if (perm === 'granted') {
+        notifyBtn.innerText = 'تم تفعيل التذكير';
+        notifyBtn.disabled = true;
+        new Notification('رفيقك', { body: 'تم تفعيل التذكير اليومي — سأذكرك بمهمتك اليومية!' });
+      } else {
+        alert('يرجى السماح بالإشعارات من إعدادات المتصفح إذا رغبت بالتذكيرات.');
+      }
+    });
+  }
