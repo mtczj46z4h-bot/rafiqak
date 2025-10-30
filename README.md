@@ -1,1 +1,1 @@
-https://رفيقك.github.io/rafiqak/
+https://rafiqak.github.io/rafiqak/
